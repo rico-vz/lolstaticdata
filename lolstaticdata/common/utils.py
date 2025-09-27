@@ -203,6 +203,21 @@ def get_latest_patch_version():
 
 
 def strip_lua_comments(data):
-    comment_pattern = re.compile(r'--(?![^\"]*\"|[^\']*\'|[^\[]*\[).*')
-    return [comment_pattern.sub("", line) for line in data]
-
+    text = '\n'.join(data)
+    
+    text = re.sub(r'--\[\[.*?--\]\]', '', text, flags=re.DOTALL)
+    
+    lines = text.split('\n')
+    cleaned_lines = []
+    for line in lines:
+        comment_pos = line.find('--')
+        if comment_pos != -1:
+            before_comment = line[:comment_pos]
+            single_quotes = before_comment.count("'") - before_comment.count("\\'")
+            double_quotes = before_comment.count('"') - before_comment.count('\\"')
+            
+            if single_quotes % 2 == 0 and double_quotes % 2 == 0:
+                line = line[:comment_pos]
+        cleaned_lines.append(line)
+    
+    return cleaned_lines
