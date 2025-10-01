@@ -410,17 +410,27 @@ class LolWikiDataHandler:
             return HTMLAbilityWrapper(soup)
         except ValueError:
             print(f"WARNING: Ability data could not be found for {ability_name}. The Wiki page may be empty: https://wiki.leagueoflegends.com/en-us/Template:Data_{champion_name}/{ability_name}")
+            print(f"DEBUG: _pull_champion_ability returning None for {champion_name}/{ability_name}")
+            return None
 
     def _get_ability_effects(self, name, skill_dict):
         effects = []
+        print(f"DEBUG: _get_ability_effects for {name}, skill_dict: {skill_dict}")
         for ability_name in skill_dict.values():
             effect = self._pull_champion_ability(champion_name=name, ability_name=ability_name)
             if effect is not None:
                 effects.append(effect)
+            else:
+                print(f"DEBUG: No effect found for ability '{ability_name}' of {name}")
+        print(f"DEBUG: Found {len(effects)} valid effects for {name}")
         return effects
 
     def _render_abilities(self, champion_name, abilities: List[HTMLAbilityWrapper], default: str) -> Tuple[str, List[Ability]]:
         inputs, abilities = abilities, []  # rename variables
+        print(f"DEBUG: _render_abilities called for {champion_name} with {len(inputs)} abilities (default: {default})")
+        if not inputs:
+            print(f"DEBUG: No ability data found for {champion_name} (default: {default})")
+            return default, []
         skill_key = inputs[0]["skill"]
         for data in inputs:
             _skill_key = data["skill"]
