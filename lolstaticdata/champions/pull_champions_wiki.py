@@ -1,5 +1,6 @@
 from typing import Tuple, List, Union, Iterator, Dict
 import re
+import traceback
 from bs4 import BeautifulSoup
 from collections import Counter
 from slpp import slpp as lua
@@ -528,7 +529,18 @@ class LolWikiDataHandler:
 
             recharge_rate = data.get("recharge")
             if recharge_rate:
-                _, recharge_rate = ParsingAndRegex.regex_simple_flat(recharge_rate, nvalues)  # ignore units
+                try:
+                    _, recharge_rate = ParsingAndRegex.regex_simple_flat(recharge_rate, nvalues)  # ignore units
+                except Exception as error:
+                    print(f"ERROR: FAILURE TO PARSE RECHARGE RATE")
+                    print(f"  Champion: {champion_name}")
+                    print(f"  Ability: {data.get('name', 'Unknown')}")
+                    print(f"  Recharge rate string: {recharge_rate}")
+                    print(f"  nvalues: {nvalues}")
+                    print(f"  Error: {error}")
+                    print(f"  Error type: {type(error).__name__}")
+                    traceback.print_exc()
+                    recharge_rate = None
 
             effects = []
             for ending in ["", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]:
@@ -536,7 +548,7 @@ class LolWikiDataHandler:
                 while description and "  " in description:
                     description = description.replace("  ", " ")
                 leveling = data.get_source(f"leveling{ending}")
-                leveling = self._render_levelings(leveling, nvalues) if leveling else []
+                leveling = self._render_levelings(leveling, nvalues, champion_name, data.get("name", "Unknown")) if leveling else []
                 if description or leveling:
                     effects.append(Effect(description=description, leveling=leveling))
 
@@ -544,8 +556,8 @@ class LolWikiDataHandler:
                 name=data["name"],
                 icon=data.get(f"icon{ending}"),
                 effects=effects,
-                cost=self._render_ability_cost(ability_cost, nvalues) if ability_cost else None,
-                cooldown=self._render_ability_cooldown(cooldown, "static" in data.data, nvalues) if cooldown else None,
+                cost=self._render_ability_cost(ability_cost, nvalues, champion_name, data.get("name", "Unknown")) if ability_cost else None,
+                cooldown=self._render_ability_cooldown(cooldown, "static" in data.data, nvalues, champion_name, data.get("name", "Unknown")) if cooldown else None,
                 targeting=data.get("targeting"),
                 affects=data.get("affects"),
                 spellshieldable=data.get("spellshield"),
@@ -585,7 +597,7 @@ class LolWikiDataHandler:
                 unique_abilities.append(ability)
         return skill_key, unique_abilities
 
-    def _render_levelings(self, html: BeautifulSoup, nvalues: int) -> List[Leveling]:
+    def _render_levelings(self, html: BeautifulSoup, nvalues: int, champion_name: str = "Unknown", ability_name: str = "Unknown") -> List[Leveling]:
         # Do some pre-processing on the html
         if not isinstance(html, str):
             html = str(html)
@@ -620,35 +632,52 @@ class LolWikiDataHandler:
         for attribute, data in initial_split:
             if attribute.endswith(":"):
                 attribute = attribute[:-1]
-            result = self._render_leveling(attribute, data, nvalues)
+            result = self._render_leveling(attribute, data, nvalues, champion_name, ability_name)
             results.append(result)
 
         return results
 
-    def _render_leveling(self, attribute: str, data: str, nvalues: int) -> Leveling:
-        modifiers = self._render_modifiers(data, nvalues)
+    def _render_leveling(self, attribute: str, data: str, nvalues: int, champion_name: str = "Unknown", ability_name: str = "Unknown") -> Leveling:
+        modifiers = self._render_modifiers(data, nvalues, champion_name, ability_name, attribute)
         leveling = Leveling(
             attribute=attribute,
             modifiers=modifiers,
         )
         return leveling
 
-    def _render_modifiers(self, mods: str, nvalues: int) -> List[Modifier]:
+    def _render_modifiers(self, mods: str, nvalues: int, champion_name: str = "Unknown", ability_name: str = "Unknown", attribute: str = "Unknown") -> List[Modifier]:
         modifiers = []  # type: List[Modifier]
         try:
             parsed_modifiers = ParsingAndRegex.split_modifiers(mods)
         except Exception as error:
-            print("ERROR: FAILURE TO SPLIT MODIFIER")
-            print("ERROR:", error)
+            print(f"ERROR: FAILURE TO SPLIT MODIFIER")
+            print(f"  Champion: {champion_name}")
+            print(f"  Ability: {ability_name}")
+            print(f"  Attribute: {attribute}")
+            print(f"  Modifier string: {mods}")
+            print(f"  nvalues: {nvalues}")
+            print(f"  Error: {error}")
+            print(f"  Error type: {type(error).__name__}")
+            traceback.print_exc()
             return modifiers
 
         for lvling in parsed_modifiers:
             try:
-                modifier = self._render_modifier(lvling, nvalues)
+                modifier = self._render_modifier(lvling, nvalues, champion_name, ability_name, attribute)
                 modifiers.append(modifier)
             except Exception as error:
-                print(f"ERROR: FAILURE TO PARSE MODIFIER:  {lvling}")
-                print("ERROR:", error)
+                print(f"ERROR: FAILURE TO PARSE MODIFIER: {lvling}")
+                print(f"  Champion: {champion_name}")
+                print(f"  Ability: {ability_name}")
+                print(f"  Attribute: {attribute}")
+                print(f"  Modifier string: {lvling}")
+                print(f"  nvalues: {nvalues}")
+                print(f"  Error: {error}")
+                print(f"  Error type: {type(error).__name__}")
+                traceback.print_exc()
+                if nvalues is None:
+                    print(f"  WARNING: nvalues is None, cannot create fallback modifier. Skipping.")
+                    continue
                 modifier = Modifier(
                     values=[0 for _ in range(nvalues)],
                     units=[lvling for _ in range(nvalues)],
@@ -656,21 +685,32 @@ class LolWikiDataHandler:
                 modifiers.append(modifier)
         return modifiers
 
-    def _render_modifier(self, mod: str, nvalues: int) -> Modifier:
-        units, values = ParsingAndRegex.get_modifier(mod, nvalues)
-        modifier = Modifier(
-            values=values,
-            units=units,
-        )
-        return modifier
+    def _render_modifier(self, mod: str, nvalues: int, champion_name: str = "Unknown", ability_name: str = "Unknown", attribute: str = "Unknown") -> Modifier:
+        try:
+            units, values = ParsingAndRegex.get_modifier(mod, nvalues)
+            modifier = Modifier(
+                values=values,
+                units=units,
+            )
+            return modifier
+        except Exception as error:
+            print(f"ERROR: FAILURE IN _render_modifier")
+            print(f"  Champion: {champion_name}")
+            print(f"  Ability: {ability_name}")
+            print(f"  Attribute: {attribute}")
+            print(f"  Modifier string: {mod}")
+            print(f"  nvalues: {nvalues}")
+            print(f"  Error: {error}")
+            print(f"  Error type: {type(error).__name__}")
+            raise
 
-    def _render_ability_cost(self, mods: str, nvalues: int) -> Cost:
-        modifiers = self._render_modifiers(mods, nvalues)
+    def _render_ability_cost(self, mods: str, nvalues: int, champion_name: str = "Unknown", ability_name: str = "Unknown") -> Cost:
+        modifiers = self._render_modifiers(mods, nvalues, champion_name, ability_name, "Cost")
         cost = Cost(modifiers=modifiers)
         return cost
 
-    def _render_ability_cooldown(self, mods: str, static_cooldown: bool, nvalues: int) -> Cooldown:
-        modifiers = self._render_modifiers(mods, nvalues)
+    def _render_ability_cooldown(self, mods: str, static_cooldown: bool, nvalues: int, champion_name: str = "Unknown", ability_name: str = "Unknown") -> Cooldown:
+        modifiers = self._render_modifiers(mods, nvalues, champion_name, ability_name, "Cooldown")
         cooldown = Cooldown(
             modifiers=modifiers,
             affected_by_cdr=not static_cooldown,
@@ -978,6 +1018,8 @@ class ParsingAndRegex:
             assert len(values) == nvalues
             return not_parsed, values
         elif string.lower() == "none":
+            if nvalues is None:
+                raise UnparsableLeveling(f"Could not parse 'none' value: nvalues is None for string: {string}")
             values = [0 for _ in range(nvalues)]
             return ["", ""], values # No cost abilities
         raise UnparsableLeveling(f"Could not parse a simple flat value: {string}")
@@ -994,6 +1036,8 @@ class ParsingAndRegex:
         if mod in list(LolWikiDataHandler.UNHANDLED_MODIFIERS.keys()):
             value = LolWikiDataHandler.UNHANDLED_MODIFIERS[mod]["value"]
             lvling = LolWikiDataHandler.UNHANDLED_MODIFIERS[mod]["lvling"]
+            if nvalues is None:
+                raise UnparsableLeveling(f"Could not parse unhandled modifier '{mod}': nvalues is None")
             parsed = [value for _ in range(nvalues)]
             units = [lvling for _ in range(nvalues)]
             return units, parsed
