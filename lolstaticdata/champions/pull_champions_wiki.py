@@ -287,6 +287,12 @@ class LolWikiDataHandler:
         else:
             patch = data["patch"]
         
+        changes = data.get("changes", "")
+        if changes and changes.startswith("V"):
+            patch_last_changed = changes[1:]
+        else:
+            patch_last_changed = changes
+        
         sale = {}
         sale_price = 0
         if self.process_skins:
@@ -470,8 +476,7 @@ class LolWikiDataHandler:
             abilities=abilities,
             release_date=data["date"],
             release_patch=patch,
-            # remove the leading "V"
-            patch_last_changed=data["changes"][1:],  # remove the leading "V"
+            patch_last_changed=patch_last_changed,
             price=Price(rp=data["rp"], blue_essence=data["be"], sale_rp=sale_price),
             lore="",
             faction="",
