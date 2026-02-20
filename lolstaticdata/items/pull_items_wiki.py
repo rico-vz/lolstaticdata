@@ -368,7 +368,7 @@ class WikiItem:
         use_cache = True
         html = download_soup(url, use_cache, dir="__wiki__")
         soup = BeautifulSoup(html, "lxml")
-        code = soup.findAll("td", {"data-name": "code"})
+        code = soup.find_all("td", {"data-name": "code"})
         return cls._parse_item_id(code=code[0].text)
 
     @classmethod
@@ -607,7 +607,7 @@ class WikiItem:
         html = download_soup(url, True, "__wiki__")
         soup = BeautifulSoup(html, "lxml")
         item_data = OrderedDict()
-        for td in soup.findAll("td", {"data-name": True}):
+        for td in soup.find_all("td", {"data-name": True}):
             attributes = td.find_previous("td").text.rstrip()
             attributes = attributes.lstrip()
             values = td.text.rstrip()

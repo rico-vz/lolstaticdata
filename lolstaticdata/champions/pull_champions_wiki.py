@@ -772,7 +772,7 @@ class LolWikiDataHandler:
         url = f"https://wiki.leagueoflegends.com/en-us/Sales"
         html = download_soup(url, False)
         soup = BeautifulSoup(html, "lxml")
-        spans = soup.findAll("div", {"class": "skin_portrait skin-icon"})
+        spans = soup.find_all("div", {"class": "skin_portrait skin-icon"})
         sale = {}
         for i in spans:
             prices = get_prices.findall(i.text)
