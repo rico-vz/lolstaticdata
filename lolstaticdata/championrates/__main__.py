@@ -22,7 +22,7 @@ def main():
     version_split = requests.get("https://raw.communitydragon.org/latest/content-metadata.json").json()["version"].split(".")
     version = version_split[0] + "." + version_split[1]
 
-    with open("/home/meraki/code/meraki/Data/champion-rates/rates.json", "w") as f:
+    with open("rates.json", "w") as f:
         json.dump({"data":all_champs,"patch":version}, f)
 
 if __name__ == "__main__":
