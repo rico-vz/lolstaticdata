@@ -129,7 +129,7 @@ def download_json(url: str, use_cache: bool = True) -> Json:
         with open(fn) as f:
             j = json.load(f)
     else:
-        headers = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36"}
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"}
         page = requests.get(url, headers=headers)
         j = page.json()
         if use_cache:
