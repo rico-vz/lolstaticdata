@@ -1,6 +1,7 @@
 from typing import List, Type, Collection, Mapping, Union
 import os
 import json
+import time
 import requests
 import itertools
 import re
@@ -131,7 +132,16 @@ def download_json(url: str, use_cache: bool = True) -> Json:
     else:
         headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"}
         page = requests.get(url, headers=headers)
-        j = page.json()
+        page.raise_for_status()
+        try:
+            j = page.json()
+        except requests.exceptions.JSONDecodeError as e:
+            snippet = page.text[:160].replace("\n", " ").strip()
+            content_type = page.headers.get("Content-Type", "")
+            raise ValueError(
+                f"Invalid JSON response from {url} (status={page.status_code}, "
+                f"content_type={content_type!r}, body_start={snippet!r})"
+            ) from e
         if use_cache:
             with open(fn, "w") as f:
                 json.dump(j, f)
@@ -152,9 +162,28 @@ def download_soup(url: str, use_cache: bool = True, dir: str = f"__cache__"):
         with open(fn, encoding="utf-8") as f:
             html = f.read()
     else:
-        page = requests.get(url)
-        # html = page.content.decode(page.encoding)
-        html = page.text
+        for attempt, delay in enumerate((0.0, 0.5, 1.0), start=1):
+            if delay:
+                time.sleep(delay)
+            try:
+                page = requests.get(url, timeout=15)
+                # html = page.content.decode(page.encoding)
+                html = page.text
+            except requests.RequestException:
+                if attempt == 3:
+                    raise
+                continue
+
+            if "wiki.leagueoflegends.com" in url:
+                soup = BeautifulSoup(html, "lxml")
+                has_data_table = any(item.text.strip() == "Parameter" for item in soup.find_all(["th", "td"]))
+                has_module_source = soup.find("pre", {"class": "mw-code mw-script"}) is not None
+                if not has_data_table and not has_module_source:
+                    if attempt == 3:
+                        break
+                    continue
+
+            break
         if use_cache:
             with open(fn, "w", encoding="utf-8") as f:
                 f.write(html)

@@ -508,7 +508,9 @@ class LolWikiDataHandler:
         return effects
 
     def _render_abilities(self, champion_name, abilities: List[HTMLAbilityWrapper], default: str) -> Tuple[str, List[Ability]]:
-        inputs, abilities = abilities, []  # rename variables
+        inputs, abilities = abilities, []
+        if not inputs:
+            return default, abilities
         skill_key = inputs[0]["skill"]
         for data in inputs:
             _skill_key = data["skill"]
@@ -737,12 +739,12 @@ class LolWikiDataHandler:
             except Exception as error:
                 print(f"ERROR: FAILURE TO PARSE MODIFIER:  {lvling}")
                 print("ERROR:", error)
-                if nvalues is not None:
-                    modifier = Modifier(
-                        values=[0 for _ in range(nvalues)],
-                        units=[lvling for _ in range(nvalues)],
-                    )
-                    modifiers.append(modifier)
+                safe_nvalues = nvalues or 5
+                modifier = Modifier(
+                    values=[0 for _ in range(safe_nvalues)],
+                    units=[lvling for _ in range(safe_nvalues)],
+                )
+                modifiers.append(modifier)
         return modifiers
 
     def _render_modifier(self, mod: str, nvalues: int) -> Modifier:
