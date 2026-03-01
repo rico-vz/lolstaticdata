@@ -7,7 +7,7 @@ from .modelitem import Item, Shop
 
 
 def get_latest_version():
-    url = "http://ddragon.leagueoflegends.com/api/versions.json"
+    url = "https://ddragon.leagueoflegends.com/api/versions.json"
     j = download_json(url, use_cache=False)
     return j[0]
 
@@ -101,14 +101,14 @@ class DragonItem:
         cls,
     ):  # Main Function, gets items from ddragon, compares them with cdragon and then gets the items from the wiki
         # I didn't want make a request to cdragon for every item
-        url = "http://ddragon.leagueoflegends.com/cdn/{}/data/en_US/item.json".format(get_latest_version())
+        url = "https://ddragon.leagueoflegends.com/cdn/{}/data/en_US/item.json".format(get_latest_version())
         p = download_json(url, use_cache=True)
         return p["data"]
 
     @classmethod
     def get_ddragon(cls, ddragon: int, p: dict):
         # print(ddragon)
-        baseurl = "http://ddragon.leagueoflegends.com/cdn/{}/img/item/".format(get_latest_version())  # icon base url
+        baseurl = "https://ddragon.leagueoflegends.com/cdn/{}/img/item/".format(get_latest_version())  # icon base url
         icon = baseurl + p[ddragon]["image"]["full"]
         plaintext = p[ddragon]["plaintext"]  # simple description
         purchasable = p[ddragon]["gold"]["purchasable"]  # is this purchasable or is it upgraded (seraph's embrace)

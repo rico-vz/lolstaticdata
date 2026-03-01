@@ -57,7 +57,7 @@ def main(champion: str | None = None, stats: bool = False, abilities: bool = Fal
 
     latest_version = utils.get_latest_patch_version()
     ddragon_champions = utils.download_json(
-        f"http://ddragon.leagueoflegends.com/cdn/{latest_version}/data/en_US/championFull.json"
+        f"https://ddragon.leagueoflegends.com/cdn/{latest_version}/data/en_US/championFull.json"
     )["data"]
 
     factions = {}
@@ -94,7 +94,7 @@ def main(champion: str | None = None, stats: bool = False, abilities: bool = Fal
         ddragon_champion = ddragon_champions[champion_key]
 
         champion.icon = (
-            f"http://ddragon.leagueoflegends.com/cdn/{latest_version}/img/champion/{ddragon_champion['image']['full']}"
+            f"https://ddragon.leagueoflegends.com/cdn/{latest_version}/img/champion/{ddragon_champion['image']['full']}"
         )
 
         if lore or process_all:
@@ -106,7 +106,7 @@ def main(champion: str | None = None, stats: bool = False, abilities: bool = Fal
 
         if (abilities or process_all) and champion.abilities:
             ability_icon_filenames = get_ability_filenames(
-                f"http://raw.communitydragon.org/latest/game/assets/characters/{champion_key.lower()}/hud/icons2d/"
+                f"https://raw.communitydragon.org/latest/game/assets/characters/{champion_key.lower()}/hud/icons2d/"
             )
             for ability_key, abilities_list in champion.abilities.items():
                 for ability_index, ability in enumerate(abilities_list, start=1):

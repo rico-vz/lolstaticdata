@@ -44,7 +44,7 @@ def main():
             item.special_recipe = cdrag_item.special_recipe
             if item.iconOverlay == True:
                 item.iconOverlay = (
-                    "http://raw.communitydragon.org/latest/game/data/items/icons2d/bordertreatmentornn.png"
+                    "https://raw.communitydragon.org/latest/game/data/items/icons2d/bordertreatmentornn.png"
                 )
             else:
                 item.iconOverlay = False

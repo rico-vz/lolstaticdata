@@ -196,7 +196,7 @@ def save_json(data, filename):
 
 
 def get_latest_patch_version():
-    versions = download_json("http://ddragon.leagueoflegends.com/api/versions.json", use_cache=False)
+    versions = download_json("https://ddragon.leagueoflegends.com/api/versions.json", use_cache=False)
     versions = [v for v in versions if "_" not in v]
     versions = natsorted(versions)
     return versions[-1]

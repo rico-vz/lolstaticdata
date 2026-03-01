@@ -851,7 +851,7 @@ class LolWikiDataHandler:
             path = path.lower()
             path = "https://raw.communitydragon.org/pbe/plugins/rcp-be-lol-game-data/global/default/assets" + path
             return path
-        base_url = "http://raw.communitydragon.org/pbe/plugins/rcp-be-lol-game-data/global/default/v1"
+        base_url = "https://raw.communitydragon.org/pbe/plugins/rcp-be-lol-game-data/global/default/v1"
         # /lol-game-data/assets/v1/champion-chroma-images/32/32014.png
         path = path.split("v1")[1]
         return base_url + path
@@ -864,7 +864,7 @@ class LolWikiDataHandler:
         skins = []
         champ_id = self.skin_data[name]["id"]
 
-        cdragon = "http://raw.communitydragon.org/pbe/plugins/rcp-be-lol-game-data/global/default/v1/champions/{0}.json".format(
+        cdragon = "https://raw.communitydragon.org/pbe/plugins/rcp-be-lol-game-data/global/default/v1/champions/{0}.json".format(
             champ_id
         )
         cdrag_json = download_json(cdragon, False)
