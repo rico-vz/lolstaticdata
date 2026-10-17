@@ -131,10 +131,11 @@ class LolWikiDataHandler:
             "lvling": " + 40 for every stack, capped at 9 stacks"
         },
         # K'Sante
-        "3.5 : 2 (based on bonus resistances)": {
+        "3.5 : 2 (based on bonus resistances) • 2.33 : 1.33": {
             "value": 3.5,
             "lvling": " - 0.0125 x bonus resistances, " \
-            "capped at 120 bonus resistances"
+            "capped at 120 bonus resistances. During All Out: " \
+            "2.33 - 0.00833 x bonus resistances"
         },
         # Nasus
         "Siphoning Strike Stacks": {
@@ -142,8 +143,8 @@ class LolWikiDataHandler:
             "lvling": "Siphoning Strike Stacks"
         },
         # Quinn
-        "8 : 2.93 (based on critical strike chance)": {
-            "value": 8,
+        "7 : 2.56 (based on critical strike chance)": {
+            "value": 7,
             "lvling": " x (0.99 ^ critical strike chance %)"
         },
         # Sett
@@ -157,6 +158,16 @@ class LolWikiDataHandler:
             "value": 2,
             "lvling": "% (+ 2 / 3 / 4 / 5 / 6% per 100 AD) " \
             "of target's maximum health"
+        },
+        # Aurelion Sol
+        "(3.1% Stardust)% of target's maximum health": {
+            "value": 0.031,
+            "lvling": "% of target's maximum health per Stardust"
+        },
+        # Bard
+        "50 • 8 : 4 (based on number of Chimes)": {
+            "value": 50,
+            "lvling": " (Meep spawn rate: 8 : 4 based on number of Chimes)"
         },
         # Veigar
         "8 : 0 (based on  Phenomenal Evil stacks)": {
@@ -174,6 +185,11 @@ class LolWikiDataHandler:
             "lvling": " x (1 - (0.01 per 1.67% bonus attack speed)). " \
             "This is capped at 67% reduction at 111.1% bonus attack speed."
         },
+        # Zeri
+        "10 • 100": {
+            "value": 10,
+            "lvling": " (100 for full charge zap)"
+        },
         # Yone
         "14 : 6 (based on bonus attack speed)": {
             "value": 14,
@@ -181,6 +197,7 @@ class LolWikiDataHandler:
             "This is capped at 62.5% reduction at 94.6% bonus attack speed."
         },
     }
+    rc_scales_with_rank = re.compile(r".+ scales with .+'s rank")
 
     def __init__(
         self,
@@ -697,13 +714,8 @@ class LolWikiDataHandler:
         initial_split = [
             lvling.strip()
             for lvling in initial_split
-            if lvling.strip()
-            not in (
-                "Takedown scales with Aspect of the Cougar's rank",
-                "Swipe scales with Aspect of the Cougar's rank",
-                "Pounce scales with Aspect of the Cougar's rank",
-                "Cougar form's abilities rank up when Aspect of the Cougar does",
-            )
+            if not self.rc_scales_with_rank.fullmatch(lvling.strip())
+            and lvling.strip() != "Cougar form's abilities rank up when Aspect of the Cougar does"
         ]
         initial_split = list(grouper(initial_split, 2))
 
@@ -1007,22 +1019,22 @@ class ParsingAndRegex:
     rc_number = re.compile(r_number)
     rc_based_on_level = re.compile(r"(\d+\.?\d*) ?[−|:] ?(\d+\.?\d*) \(based on level\)")
     rc_based_on_crit = re.compile(r"\d+ \+ \d+% critical strike chance")
+    rc_crit_with_ie = re.compile(r"\((\d+\.?\d*)% \+ (\d+\.?\d*)%\) AD")
 
     @staticmethod
     def regex_slash_separated(string: str, nvalues: int) -> Tuple[List[str], List[Union[int, float]]]:
         for i in range(20, 1, -1):
-            regex = " / ".join([ParsingAndRegex.r_number for _ in range(i)])
-            result = re.findall(regex, string)
+            regex = "%? / ".join([ParsingAndRegex.r_number for _ in range(i)])
+            result = list(re.finditer(regex, string))
             if result:
                 assert len(result) == 1
-                result = result[0]
-                parsed = " / ".join([f"{{{j}}}" for j in range(i)]).format(*result)
-                not_parsed = string.split(parsed)
-                values = [eval(r) for r in result]
+                match = result[0]
+                not_parsed = [string[: match.start()], string[match.end() :]]
+                values = [eval(r) for r in match.groups()]
                 # Special case...
                 if nvalues == 3 and len(values) == 5:
                     values = [values[0], values[2], values[4]]
-                if nvalues is not None and len(values) != nvalues:
+                if nvalues is not None and len(values) != nvalues and "(based on " not in string:
                     print(f"WARNING: Unexpected number of modifier values: {values} (expected {nvalues})")
                 return not_parsed, values
         raise ValueError(f"Could not parse slash-separated string: {string}")
@@ -1088,11 +1100,16 @@ class ParsingAndRegex:
             parsed = [value for _ in range(nvalues)]
             units = [lvling for _ in range(nvalues)]
             return units, parsed
-        else:
-            units, parsed = ParsingAndRegex.regex_simple_flat(mod, nvalues)
-            units = ParsingAndRegex.get_units(units)
-            units = [units for _ in range(len(parsed))]
-            return units, parsed
+        crit_with_ie = ParsingAndRegex.rc_crit_with_ie.fullmatch(mod)
+        if crit_with_ie:
+            base, ie_bonus = crit_with_ie.groups()
+            values = [eval(base) for _ in range(nvalues)]
+            units = [f"% AD (+ {ie_bonus}% AD [Infinity Edge])" for _ in range(nvalues)]
+            return units, values
+        units, parsed = ParsingAndRegex.regex_simple_flat(mod, nvalues)
+        units = ParsingAndRegex.get_units(units)
+        units = [units for _ in range(len(parsed))]
+        return units, parsed
 
     @staticmethod
     def split_modifiers(mods: str) -> List[str]:
